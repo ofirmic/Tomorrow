@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { IWeatherProvider, RealtimeWeatherData } from '../../business-logic/ports/weather-provider.js';
 import { CircuitBreaker } from '../../shared/utils/circuit-breaker.js';
+import Redis from 'ioredis';
 
 type CacheEntry = { value: RealtimeWeatherData; expiresAt: number };
 
@@ -9,6 +10,7 @@ export class TomorrowWeatherProvider implements IWeatherProvider {
   private readonly units: 'metric' | 'imperial';
   private readonly cacheTtlMs: number;
   private cache = new Map<string, CacheEntry>();
+  private redis: Redis | null = null;
   private inFlight = new Map<string, Promise<RealtimeWeatherData>>();
   private rateLimitResetTime: number = 0;
   private remainingCalls: number = Infinity;
@@ -27,13 +29,27 @@ export class TomorrowWeatherProvider implements IWeatherProvider {
       monitoringPeriod: 60_000, // 1-minute window (shorter for dev)
       minimumRequests: 2        // Need at least 2 requests
     });
+
+    // Optional Redis cache (shared across replicas)
+    const redisUrl = process.env.REDIS_URL;
+    if (redisUrl) {
+      this.redis = new Redis(redisUrl, { lazyConnect: true, enableOfflineQueue: false });
+      this.redis.on('error', (e) => console.warn('Redis error:', e.message));
+      this.redis.connect().catch(() => console.warn('Redis connect failed; falling back to in-memory cache'));
+    }
   }
 
   async getRealtime(latitude: number, longitude: number): Promise<RealtimeWeatherData> {
     const key = `${latitude.toFixed(3)},${longitude.toFixed(3)},${this.units}`;
     const now = Date.now();
     
-    // Check cache first (5-minute TTL to reduce API calls)
+    // Check cache first (Redis, then in-memory)
+    if (this.redis) {
+      try {
+        const cached = await this.redis.get(key);
+        if (cached) return JSON.parse(cached) as RealtimeWeatherData;
+      } catch {}
+    }
     const hit = this.cache.get(key);
     if (hit && hit.expiresAt > now) return hit.value;
     
@@ -48,13 +64,17 @@ export class TomorrowWeatherProvider implements IWeatherProvider {
       const mockResult: RealtimeWeatherData = {
         temperatureC: Math.round((20 + Math.random() * 15) * 10) / 10,
         windSpeedMps: Math.round((1 + Math.random() * 8) * 10) / 10,
-        precipitationMmHr: Math.random() > 0.7 ? Math.round(Math.random() * 5 * 10) / 10 : 0,
+        // Increase chance of non-zero precipitation in demo data
+        precipitationMmHr: Math.random() > 0.5 ? Math.round((0.2 + Math.random() * 6) * 10) / 10 : 0,
         raw: {
           message: 'Demo data - API rate limited (cooldown)',
           location: { lat: latitude, lon: longitude },
         } as any,
       };
       this.cache.set(key, { value: mockResult, expiresAt: now + this.cacheTtlMs });
+      if (this.redis) {
+        this.redis.setex(key, Math.floor(this.cacheTtlMs / 1000), JSON.stringify(mockResult)).catch(() => {});
+      }
       return mockResult;
     }
 
@@ -92,6 +112,9 @@ export class TomorrowWeatherProvider implements IWeatherProvider {
             raw: data,
           };
           this.cache.set(key, { value: result, expiresAt: Date.now() + this.cacheTtlMs });
+          if (this.redis) {
+            this.redis.setex(key, Math.floor(this.cacheTtlMs / 1000), JSON.stringify(result)).catch(() => {});
+          }
           return result;
         } catch (error: any) {
           const status = error?.response?.status;
@@ -107,7 +130,8 @@ export class TomorrowWeatherProvider implements IWeatherProvider {
               const mockResult: RealtimeWeatherData = {
                 temperatureC: Math.round((20 + Math.random() * 15) * 10) / 10,
                 windSpeedMps: Math.round((1 + Math.random() * 8) * 10) / 10,
-                precipitationMmHr: Math.random() > 0.7 ? Math.round(Math.random() * 5 * 10) / 10 : 0,
+                // Increase chance of non-zero precipitation in demo data
+                precipitationMmHr: Math.random() > 0.5 ? Math.round((0.2 + Math.random() * 6) * 10) / 10 : 0,
                 raw: {
                   message: 'Demo data - API rate limited',
                   location: { lat: latitude, lon: longitude },
@@ -115,6 +139,9 @@ export class TomorrowWeatherProvider implements IWeatherProvider {
                 },
               };
               this.cache.set(key, { value: mockResult, expiresAt: Date.now() + this.cacheTtlMs });
+              if (this.redis) {
+                this.redis.setex(key, Math.floor(this.cacheTtlMs / 1000), JSON.stringify(mockResult)).catch(() => {});
+              }
               return mockResult;
             }
             throw error;

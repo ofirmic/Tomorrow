@@ -9,10 +9,9 @@ import { loadEnv } from './infrastructure/configuration/env.js';
 // Infrastructure
 import { TomorrowWeatherProvider } from './infrastructure/external-apis/tomorrow-weather.provider.js';
 import { EventDrivenWeatherProvider } from './infrastructure/external-apis/event-driven-weather.provider.js';
-import { PrismaAlertRepository } from './infrastructure/persistence/prisma-alert.repository.js';
 import { KafkaService } from './infrastructure/events/kafka.service.js';
-import { EventDrivenAlertEvaluationUseCase } from './business-logic/use-cases/event-driven-alert-evaluation.use-case.js';
 import { WebSocketService } from './infrastructure/websocket/websocket.service.js';
+import { PrismaAlertRepository } from './infrastructure/persistence/prisma-alert.repository.js';
 import { MockNotificationGateway } from './infrastructure/notifications/mock-notification.gateway.js';
 
 // API Layer
@@ -28,6 +27,7 @@ import { correlationMiddleware, responseTimeMiddleware } from './middleware/obse
 import { weatherRateLimiter } from './middleware/security/rate-limit.middleware.js';
 import { securityHeadersMiddleware, requestSizeMiddleware } from './middleware/security/security.middleware.js';
 import { createVersionMiddleware } from './api/versioning/api-version.middleware.js';
+import promBundle from 'express-prom-bundle';
 
 // Utilities
 import { GracefulShutdown } from './shared/utils/graceful-shutdown.js';
@@ -35,7 +35,6 @@ import { GracefulShutdown } from './shared/utils/graceful-shutdown.js';
 // Load configuration
 const config = loadEnv();
 
-// Initialize Kafka service
 const kafkaService = new KafkaService();
 
 // Initialize infrastructure
@@ -44,13 +43,11 @@ const weatherProvider = new TomorrowWeatherProvider({
   units: config.UNITS 
 });
 
-// Create event-driven weather provider (used unless SIMPLE_MODE=true)
-const eventDrivenWeatherProvider = new EventDrivenWeatherProvider(
-  { apiKey: config.TOMORROW_API_KEY, units: config.UNITS },
-  kafkaService
-);
+// SIMPLE_MODE=true -> direct provider; otherwise event-driven
 const useSimpleMode = process.env.SIMPLE_MODE === 'true';
-const providerForApi = useSimpleMode ? weatherProvider : eventDrivenWeatherProvider;
+const providerForApi = useSimpleMode
+  ? weatherProvider
+  : new EventDrivenWeatherProvider({ apiKey: config.TOMORROW_API_KEY, units: config.UNITS }, kafkaService);
 
 const alertRepo = new PrismaAlertRepository();
 const notificationGateway = new MockNotificationGateway();
@@ -83,6 +80,16 @@ app.use(cors({
   credentials: false,
 }));
 app.use(json({ limit: '1mb' })); // Explicit size limit
+
+// Metrics (Prometheus)
+const metricsMiddleware = promBundle({
+  includeMethod: true,
+  includePath: true,
+  includeStatusCode: true,
+  includeUp: true,
+  promClient: { collectDefaultMetrics: {} },
+});
+app.use(metricsMiddleware);
 
 // Observability middleware
 app.use(correlationMiddleware);
@@ -142,27 +149,22 @@ const server = app.listen(port, async () => {
   console.log(`📊 Observability: Logging + Tracing + Circuit Breaker`);
   console.log(`📡 Event Streaming: Kafka + WebSocket`);
 
-  try {
-    // Initialize Kafka connection
-    await kafkaService.connect();
-    
-    // Initialize WebSocket service
-    const webSocketService = new WebSocketService(server, kafkaService);
-    
-    // Initialize event-driven alert evaluation
-    const eventDrivenAlertEvaluation = new EventDrivenAlertEvaluationUseCase(
-      alertRepo,
-      kafkaService
-    );
-    await eventDrivenAlertEvaluation.startEventProcessing();
-    
-    // Initialize events controller after Kafka is connected
-    eventsController = createEventsController(kafkaService, eventDrivenAlertEvaluation);
-    app.use('/api/events', eventsController);
-    
-    console.log('✅ All services initialized successfully');
-  } catch (error) {
-    console.error('❌ Failed to initialize services:', error);
+  if (!useSimpleMode) {
+    try {
+      await kafkaService.connect();
+      const webSocketService = new WebSocketService(server, kafkaService);
+      const { EventDrivenAlertEvaluationUseCase } = await import('./business-logic/use-cases/event-driven-alert-evaluation.use-case.js');
+      const eventDrivenAlertEvaluation = new EventDrivenAlertEvaluationUseCase(
+        alertRepo,
+        kafkaService
+      );
+      await eventDrivenAlertEvaluation.startEventProcessing();
+      eventsController = createEventsController(kafkaService, eventDrivenAlertEvaluation);
+      app.use('/api/events', eventsController);
+      console.log('✅ Event-driven services initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize Kafka services:', error);
+    }
   }
 });
 
