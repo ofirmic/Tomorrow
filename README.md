@@ -2,6 +2,8 @@
 
 This project implements a full-stack weather alert system integrating with the Tomorrow.io API.
 
+Author: Ofir Michaely
+
 ---
 
 ### Quick Start

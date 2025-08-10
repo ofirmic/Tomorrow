@@ -50,7 +50,7 @@ The compose file provides sane defaults for local use. If you need custom values
 
 ## What to test first (5 minutes)
 1) Open Web: `http://localhost:3000` → see current weather for a preset location.
-2) Create an alert (e.g., temperature > 30°C for Boston) → Alerts page.
+2) Create an alert (for example, temperature > 30°C for Boston) → Alerts page.
 3) Watch Current State → shows triggered/not triggered; updates periodically.
 4) Hammer refresh or add multiple alerts → you should still see responsive UI even if Tomorrow.io rate‑limits; the app retries with backoff, uses caching, and gracefully degrades (returns demo data instead of failing hard).
 

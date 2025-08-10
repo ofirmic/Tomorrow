@@ -9,7 +9,7 @@ export function Sidebar() {
         <NavLink to="/alerts">Alerts</NavLink>
         <NavLink to="/state">Current State</NavLink>
       </nav>
-      <div className="side-footer">Tomorrow.io Demo</div>
+      <div className="side-footer">Built by Ofir Michaely</div>
     </aside>
   )
 }
