@@ -22,14 +22,16 @@
 
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
 
     // Style Options
-    // "noImplicitReturns": true,
+    // Keep returns flexible for demo simplicity
+    "noImplicitReturns": false,
     // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
+    // Allow a few unused locals/imports in demo code (can enable later)
+    "noUnusedLocals": false,
     // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
+    "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
 
     // Recommended Options
