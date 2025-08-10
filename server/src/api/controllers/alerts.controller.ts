@@ -29,23 +29,7 @@ export function createAlertsController(repo: IAlertRepository) {
     }
   });
 
-  // Seed some demo alerts quickly (dev-only)
-  router.post('/seed', async (_req, res, next) => {
-    try {
-      const presets = [
-        { name: 'Hot Boston', latitude: 42.3601, longitude: -71.0589, parameter: 'TEMPERATURE', operator: 'GT', threshold: 30 },
-        { name: 'Windy SF', latitude: 37.7749, longitude: -122.4194, parameter: 'WIND_SPEED', operator: 'GTE', threshold: 10 },
-        { name: 'Rainy London', latitude: 51.5074, longitude: -0.1278, parameter: 'PRECIPITATION', operator: 'GTE', threshold: 2 },
-      ] as const;
-      const created = [] as any[];
-      for (const p of presets) {
-        created.push(await repo.createAlert({ ...p } as any));
-      }
-      res.status(201).json({ created });
-    } catch (e) {
-      next(e);
-    }
-  });
+  // (Dev-only seed endpoint removed for production cleanliness)
 
   router.get('/', async (req, res, next) => {
     try {
