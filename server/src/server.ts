@@ -131,15 +131,7 @@ app.get('/api/events/status', async (_req, res) => {
   }
 });
 
-// Development endpoint to reset circuit breaker
-app.post('/dev/reset-circuit-breaker', (_req, res) => {
-  if (typeof weatherProvider.resetCircuitBreaker === 'function') {
-    weatherProvider.resetCircuitBreaker();
-    res.json({ message: 'Circuit breaker reset successfully' });
-  } else {
-    res.status(404).json({ error: 'Reset method not available' });
-  }
-});
+// (Dev-only reset endpoint removed for production cleanliness)
 
 // API routes
 app.use('/api/alerts', createAlertsController(alertRepo));
