@@ -19,6 +19,7 @@ import { MockNotificationGateway } from './infrastructure/notifications/mock-not
 import { createAlertsController } from './api/controllers/alerts.controller.js';
 import { createWeatherRoutes } from './api/routes/weather.routes.js';
 import { createEventsController } from './api/controllers/events.controller.js';
+import { mountDocs } from './api/docs.js';
 
 // Middleware
 import { errorMiddleware, notFoundMiddleware } from './middleware/error-handling/error.middleware.js';
@@ -43,11 +44,13 @@ const weatherProvider = new TomorrowWeatherProvider({
   units: config.UNITS 
 });
 
-// Create event-driven weather provider
+// Create event-driven weather provider (used unless SIMPLE_MODE=true)
 const eventDrivenWeatherProvider = new EventDrivenWeatherProvider(
   { apiKey: config.TOMORROW_API_KEY, units: config.UNITS },
   kafkaService
 );
+const useSimpleMode = process.env.SIMPLE_MODE === 'true';
+const providerForApi = useSimpleMode ? weatherProvider : eventDrivenWeatherProvider;
 
 const alertRepo = new PrismaAlertRepository();
 const notificationGateway = new MockNotificationGateway();
@@ -60,7 +63,25 @@ app.use(securityHeadersMiddleware);
 app.use(requestSizeMiddleware);
 
 // Core middleware
-app.use(cors());
+// Restrictive CORS: allow only known frontends (configurable via CORS_ORIGINS env, comma-separated)
+const defaultOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:8081',
+  'http://127.0.0.1:8081',
+];
+const configuredOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const allowedOrigins = new Set(configuredOrigins.length > 0 ? configuredOrigins : defaultOrigins);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow curl/postman
+    callback(null, allowedOrigins.has(origin));
+  },
+  credentials: false,
+}));
 app.use(json({ limit: '1mb' })); // Explicit size limit
 
 // Observability middleware
@@ -86,6 +107,9 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// API docs (Swagger UI)
+mountDocs(app);
+
 // Development endpoint to reset circuit breaker
 app.post('/dev/reset-circuit-breaker', (_req, res) => {
   if (typeof weatherProvider.resetCircuitBreaker === 'function') {
@@ -98,7 +122,7 @@ app.post('/dev/reset-circuit-breaker', (_req, res) => {
 
 // API routes
 app.use('/api/alerts', createAlertsController(alertRepo));
-app.use('/api/weather', weatherRateLimiter, createWeatherRoutes(eventDrivenWeatherProvider));
+app.use('/api/weather', weatherRateLimiter, createWeatherRoutes(providerForApi));
 
 // Kafka events routes (will be initialized after Kafka connection)
 let eventsController: any = null;

@@ -26,7 +26,6 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgresql://${DB_USER:-weather_user}:${DB_PASSWORD:-secure_password}@db:5432/weather_alerts
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
       - KAFKA_BROKERS=kafka:9092
       - PORT=${API_PORT:-4000}
       - TOMORROW_API_KEY=${TOMORROW_API_KEY}
@@ -37,8 +36,6 @@ services:
       - "${API_PORT:-4000}:4000"
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       kafka:
         condition: service_healthy
@@ -79,19 +76,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Redis for caching and session storage
-  redis:
-    image: redis:7-alpine
-    container_name: weather-alerts-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
 volumes:
   postgres_data:

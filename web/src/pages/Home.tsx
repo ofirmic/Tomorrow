@@ -45,8 +45,8 @@ export function Home() {
     setCoordinates({ lat: preset.lat.toString(), lon: preset.lon.toString() });
   };
 
-  const weatherCondition = weatherData 
-    ? formatters.weatherCondition(
+  const weatherConditionText = weatherData 
+    ? formatters.weatherConditionText(
         weatherData.temperatureC, 
         weatherData.windSpeedMps, 
         weatherData.precipitationMmHr
@@ -126,12 +126,7 @@ export function Home() {
 
       {/* Error Display */}
       {error && (
-        <div className="card" style={{ 
-          background: '#3a1d06', 
-          borderColor: '#92400e', 
-          color: '#f59e0b',
-          marginBottom: 20 
-        }}>
+        <div className="card" style={{ background: '#3a1d06', borderColor: '#92400e', color: '#f59e0b', marginBottom: 20 }}>
           ⚠️ {error}
         </div>
       )}
@@ -147,14 +142,9 @@ export function Home() {
       {weatherData && (
         <>
           {/* Current Condition Summary */}
-          <div className="card" style={{ 
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
-            color: 'white',
-            textAlign: 'center',
-            marginBottom: 24 
-          }}>
+          <div className="card" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', color: 'white', textAlign: 'center', marginBottom: 24 }}>
             <div style={{ fontSize: '3em', marginBottom: 8 }}>
-              {weatherCondition}
+              ☀️ {weatherConditionText}
             </div>
             <div style={{ fontSize: '1.2em', opacity: 0.9 }}>
               {formatters.coordinates(parseFloat(coordinates.lat), parseFloat(coordinates.lon))}

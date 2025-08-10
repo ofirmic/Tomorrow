@@ -34,7 +34,20 @@ export class PrismaAlertRepository implements IAlertRepository {
   async listAlertsPaginated(page: number, pageSize: number): Promise<{ items: AlertRecord[]; total: number }> {
     const skip = (page - 1) * pageSize;
     const [items, total] = await Promise.all([
-      prisma.alert.findMany({ skip, take: pageSize, orderBy: { createdAt: 'desc' } }),
+      prisma.alert.findMany({
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        // Projection for bandwidth and performance
+        select: {
+          id: true, name: true, description: true, cityName: true,
+          latitude: true, longitude: true,
+          parameter: true, operator: true, threshold: true, units: true,
+          contactEmail: true, contactPhone: true,
+          createdAt: true, updatedAt: true,
+          lastValue: true, lastState: true, lastEvaluatedAt: true,
+        },
+      }) as unknown as Promise<AlertRecord[]>,
       prisma.alert.count(),
     ]);
     return { items: items as unknown as AlertRecord[], total };

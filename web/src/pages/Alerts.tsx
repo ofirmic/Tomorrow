@@ -375,13 +375,7 @@ export function Alerts() {
         </div>
 
         {alerts.length === 0 ? (
-          <div style={{ 
-            textAlign: 'center', 
-            color: '#9ca3af', 
-            padding: 40,
-            border: '2px dashed #374151',
-            borderRadius: 8
-          }}>
+          <div className="empty-state">
             📭 No alerts created yet. Use the form above to create your first alert!
           </div>
         ) : (

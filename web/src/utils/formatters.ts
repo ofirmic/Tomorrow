@@ -56,13 +56,14 @@ export const formatters = {
   coordinates: (lat: number, lon: number): string => 
     `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
   
-  weatherCondition: (temp: number | null, wind: number | null, precip: number): string => {
-    if (precip > 5) return '🌧️ Heavy Rain';
-    if (precip > 1) return '🌦️ Light Rain';
-    if (wind && wind > 10) return '💨 Windy';
-    if (temp && temp > 30) return '🌞 Hot';
-    if (temp && temp < 0) return '❄️ Freezing';
-    return '☀️ Clear';
+  // Return text only; icons are chosen by UI to keep visuals stable
+  weatherConditionText: (temp: number | null, wind: number | null, precip: number): string => {
+    if (precip > 5) return 'Heavy rain';
+    if (precip > 1) return 'Light rain';
+    if (wind && wind > 10) return 'Windy';
+    if (temp && temp > 30) return 'Hot';
+    if (temp && temp < 0) return 'Freezing';
+    return 'Clear';
   },
   
   alertStatus: (state: boolean | null): { icon: string; text: string; color: string } => {
