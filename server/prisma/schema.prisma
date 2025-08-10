@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AlertParameter {
+  TEMPERATURE
+  WIND_SPEED
+  PRECIPITATION
+}
+
+enum ComparisonOperator {
+  GT
+  GTE
+  LT
+  LTE
+  EQ
+  NE
+}
+
+model Alert {
+  id               String              @id @default(cuid())
+  name             String?
+  description      String?
+
+  // Either provide cityName, or latitude + longitude
+  cityName         String?
+  latitude         Float?
+  longitude        Float?
+
+  parameter        AlertParameter
+  operator         ComparisonOperator
+  threshold        Float
+  units            String?             // Optional units the threshold is defined in (e.g., C, m/s)
+  contactEmail     String? @db.VarChar(255)
+  contactPhone     String? @db.VarChar(50)
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  lastValue        Float?
+  lastState        Boolean?
+  lastEvaluatedAt  DateTime?
+
+  evaluations      AlertEvaluation[]
+
+  @@index([createdAt])
+  @@index([lastEvaluatedAt])
+  @@index([parameter])
+  @@index([latitude, longitude])
+}
+
+model AlertEvaluation {
+  id           String    @id @default(cuid())
+  alertId      String
+  alert        Alert     @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  evaluatedAt  DateTime  @default(now())
+  value        Float
+  triggered    Boolean
+
+  @@index([alertId, evaluatedAt])
+}

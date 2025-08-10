@@ -1,0 +1,52 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "lint": "echo 'no linter configured'",
+    "docker:build": "docker build -t weather-alerts-api .",
+    "docker:run": "docker run -p 4000:4000 weather-alerts-api"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "@types/bull": "^4.10.4",
+    "@types/ws": "^8.18.1",
+    "axios": "^1.11.0",
+    "bull": "^4.16.5",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "kafkajs": "^2.2.4",
+    "node-cron": "^4.2.1",
+    "pino": "^9.8.0",
+    "pino-http": "^10.5.0",
+    "redis": "^5.8.0",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3",
+    "zod": "^4.0.15"
+  },
+  "description": "",
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.1",
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^5.17.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.5.3",
+    "ts-node": "^10.9.2",
+    "pino-pretty": "^11.2.1"
+  }
+}
