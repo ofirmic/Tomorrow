@@ -1,9 +1,5 @@
 import { Kafka, type Producer, type Consumer, type EachMessagePayload } from 'kafkajs';
 import { EventEmitter } from 'events';
-
-/**
- * Event types for the weather alert system
- */
 export interface WeatherEventData {
   latitude: number;
   longitude: number;
@@ -41,9 +37,6 @@ export interface NotificationEventData {
   deliveryStatus: 'pending' | 'sent' | 'failed';
 }
 
-/**
- * Kafka Topics Configuration
- */
 export const KAFKA_TOPICS = {
   WEATHER_UPDATES: 'weather-updates',
   ALERT_EVALUATIONS: 'alert-evaluations', 
@@ -51,10 +44,6 @@ export const KAFKA_TOPICS = {
   SYSTEM_EVENTS: 'system-events',
 } as const;
 
-/**
- * Enterprise Kafka Service for Event-Driven Architecture
- * Handles real-time weather data streaming and alert processing
- */
 export class KafkaService extends EventEmitter {
   private kafka: Kafka;
   private producer: Producer;
@@ -62,7 +51,7 @@ export class KafkaService extends EventEmitter {
   private isConnected = false;
 
   constructor(
-    private readonly brokerUrl: string = 'localhost:9092',
+    private readonly brokerUrl: string = (process.env.KAFKA_BROKERS || 'kafka:9092'),
     private readonly clientId: string = 'weather-alerts-service'
   ) {
     super();

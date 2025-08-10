@@ -117,6 +117,20 @@ app.get('/health', (_req, res) => {
 // API docs (Swagger UI)
 mountDocs(app);
 
+// Always-on events status route (works even before consumers mount)
+app.get('/api/events/status', async (_req, res) => {
+  try {
+    const kafka = await kafkaService.getHealthStatus();
+    res.json({
+      timestamp: new Date().toISOString(),
+      eventDriven: !useSimpleMode,
+      kafka,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to read Kafka status' });
+  }
+});
+
 // Development endpoint to reset circuit breaker
 app.post('/dev/reset-circuit-breaker', (_req, res) => {
   if (typeof weatherProvider.resetCircuitBreaker === 'function') {
